@@ -1,55 +1,19 @@
-import json
 from datetime import datetime
 
 import streamlit as st
-from streamlit_local_storage import LocalStorage
 
-# Initialize LocalStorage component
-local_storage = LocalStorage()
+import utils
 
 st.set_page_config(page_title="Wallet Tracker", page_icon="💰")
 st.title("ABI Extraction Wallet")
 
-# 1. Initialize Transactions in Session State
-if "transactions" not in st.session_state:
-    st.session_state.transactions = []
+# 1. Sync from Local Storage on Load
+utils.sync_from_storage()
 
-# 2. Sync from Local Storage on Load
-# The component takes a moment to communicate with the browser.
-# We wait until it returns a non-None value (even if it's an empty string).
-if "storage_synced" not in st.session_state:
-    stored_data = local_storage.getItem("transactions")
-    if stored_data is not None:
-        if stored_data:
-            try:
-                st.session_state.transactions = json.loads(stored_data)
-            except Exception:
-                pass
-        st.session_state.storage_synced = True
-        st.rerun()
-
-
-# 3. Helper function to save changes
-def save_to_storage():
-    local_storage.setItem("transactions", json.dumps(st.session_state.transactions))
-
-
-# 4. Calculation Logic
-def calculate_total():
-    total = 0
-    for transaction in st.session_state.transactions:
-        if transaction["action"] == "Add":
-            total += transaction["amount"]
-        elif transaction["action"] == "Subtract":
-            total -= transaction["amount"]
-    return total
-
-
-# 5. UI: Metric Placeholder
-# We reserve this space at the top so the total can be updated at the end of the script.
+# 2. UI: Metric Placeholder
 metric_placeholder = st.empty()
 
-# 6. UI: Inputs (Positioned ABOVE the log)
+# 3. UI: Inputs
 amount = st.number_input("Enter amount:", min_value=0, value=0, step=1, format="%d")
 
 col1, col2 = st.columns(2)
@@ -66,10 +30,8 @@ with col1:
                     "key": f"add_{timestamp}_{len(st.session_state.transactions)}",
                 }
             )
-            save_to_storage()
+            utils.save_to_storage()
             st.toast(f"Added ${amount:,}", icon="✅")
-            # We don't call st.rerun() here to ensure the success message stays visible
-            # and the storage component has time to render its update.
         else:
             st.error("Amount must be greater than 0.")
 
@@ -85,41 +47,39 @@ with col2:
                     "key": f"sub_{timestamp}_{len(st.session_state.transactions)}",
                 }
             )
-            save_to_storage()
+            utils.save_to_storage()
             st.toast(f"Subtracted ${amount:,}", icon="⚠️")
         else:
             st.error("Amount must be greater than 0.")
 
 st.divider()
 
-# 7. UI: Transaction Log (Positioned BELOW the inputs)
-st.subheader("Transaction Log")
+# 4. UI: Transaction Log (Recent 5)
+st.subheader("Recent Transactions")
 
-if st.session_state.transactions:
-    # Sort transactions by timestamp (newest first)
+if st.session_state.get("transactions"):
+    # Sort transactions by timestamp (newest first) and take top 5
     sorted_transactions = sorted(
         st.session_state.transactions, key=lambda x: x["timestamp"], reverse=True
     )
+    recent_transactions = sorted_transactions[:5]
 
-    for transaction in sorted_transactions:
+    for transaction in recent_transactions:
         col_log, col_delete = st.columns([5, 1])
         with col_log:
             st.write(
                 f"**{transaction['action']}** ${transaction['amount']:,}  \n_{transaction['timestamp']}_"
             )
         with col_delete:
-            if st.button("Delete", key=f"del_{transaction['key']}"):
-                # Filter out the transaction
-                st.session_state.transactions = [
-                    t
-                    for t in st.session_state.transactions
-                    if t["key"] != transaction["key"]
-                ]
-                save_to_storage()
-                st.rerun()  # Rerun to refresh the list immediately
+            if st.button("Delete", key=f"del_home_{transaction['key']}"):
+                utils.delete_transaction(transaction["key"])
+
+    if len(st.session_state.transactions) > 5:
+        st.info(f"Showing 5 of {len(st.session_state.transactions)} transactions.")
+        if st.button("View All Transactions"):
+            st.switch_page("pages/log.py")
 else:
     st.info("No transactions recorded yet.")
 
-# 8. Final Update
-# Update the metric at the very top with the current state (reflecting any additions/subtractions)
-metric_placeholder.metric("Current Total", f"${calculate_total():,}")
+# 5. Final Update
+metric_placeholder.metric("Current Total", f"${utils.calculate_total():,}")
