@@ -3,8 +3,15 @@ import json
 import streamlit as st
 from streamlit_local_storage import LocalStorage
 
-# Initialize LocalStorage component
-local_storage = LocalStorage()
+_storage = None
+
+
+# Lazy initialization of LocalStorage to avoid import-time errors
+def get_storage():
+    global _storage
+    if _storage is None:
+        _storage = LocalStorage()
+    return _storage
 
 
 def sync_from_storage():
@@ -13,7 +20,8 @@ def sync_from_storage():
         st.session_state.transactions = []
 
     if "storage_synced" not in st.session_state:
-        stored_data = local_storage.getItem("transactions")
+        storage = get_storage()
+        stored_data = storage.getItem("transactions")
         if stored_data is not None:
             if stored_data:
                 try:
@@ -26,7 +34,8 @@ def sync_from_storage():
 
 def save_to_storage():
     """Save the current session state transactions to local storage."""
-    local_storage.setItem("transactions", json.dumps(st.session_state.transactions))
+    storage = get_storage()
+    storage.setItem("transactions", json.dumps(st.session_state.transactions))
 
 
 def calculate_total():
