@@ -1,15 +1,15 @@
 import streamlit as st
 
-import utils
+import wallet_utils
 
 st.set_page_config(page_title="Transaction Log", page_icon="📜")
 st.title("Full Transaction History")
 
 # 1. Sync from Local Storage on Load
-utils.sync_from_storage()
+wallet_utils.sync_from_storage()
 
 # 2. Display Current Total
-total = utils.calculate_total()
+total = wallet_utils.calculate_total()
 st.metric("Total Balance", f"${total:,}")
 
 st.divider()
@@ -26,13 +26,16 @@ if st.session_state.get("transactions"):
     for transaction in sorted_transactions:
         col_log, col_delete = st.columns([5, 1])
         with col_log:
+            zone_info = (
+                f" | {transaction.get('zone', 'N/A')}" if "zone" in transaction else ""
+            )
             st.write(
-                f"**{transaction['action']}** ${transaction['amount']:,}  \n_{transaction['timestamp']}_"
+                f"**{transaction['action']}** ${transaction['amount']:,}{zone_info}  \n_{transaction['timestamp']}_"
             )
         with col_delete:
             # Unique key for this page to avoid collisions with home page buttons
             if st.button("Delete", key=f"del_full_{transaction['key']}"):
-                utils.delete_transaction(transaction["key"])
+                wallet_utils.delete_transaction(transaction["key"])
 else:
     st.info("No transactions recorded yet. Go to the Home page to add some!")
 
