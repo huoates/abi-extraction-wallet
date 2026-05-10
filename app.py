@@ -1,109 +1,56 @@
-from datetime import datetime
-
 import streamlit as st
+from st_supabase_connection import SupabaseConnection
 
-import wallet_utils
-
-st.set_page_config(page_title="Wallet Tracker", page_icon="💰")
-
-# Custom CSS to change the cursor to a pointer for the selectbox
-st.markdown(
-    """
-    <style>
-    div[data-baseweb="select"], div[data-baseweb="select"] * {
-        cursor: pointer !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
+conn = st.connection(
+    "supabase",
+    type=SupabaseConnection,
+    url=st.secrets["SUPABASE_URL"],
+    key=st.secrets["SUPABASE_KEY"],
 )
 
-st.title("ABI Extraction Wallet")
+if "code" in st.query_params:
+    auth_code = st.query_params["code"]
+    try:
+        conn.client.auth.exchange_code_for_session({"auth_code": auth_code})  # type: ignore
+        st.query_params.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Authentication failed: {e}")
 
-# 1. Sync from Local Storage on Load
-wallet_utils.sync_from_storage()
+session = None
+try:
+    session = conn.client.auth.get_session()
+except Exception:
+    pass
 
-# 2. UI: Metric Placeholder
-metric_placeholder = st.empty()
+home = st.Page("pages/home.py", title="Home", icon="🏠")
+wallet = st.Page("pages/wallet.py", title="Wallet", icon="💼")
+log = st.Page("pages/log.py", title="Wallet Transactions", icon="📜")
+loot_tracker = st.Page("pages/loot_tracker.py", title="Loot Tracker", icon="📜")
+loot = st.Page("pages/loot.py", title="Loot")
 
-# 3. UI: Inputs
-zone = st.selectbox(
-    "Zone:",
-    options=["TV Station", "Airport", "Armory", "Farm", "Valley", "Northridge"],
-    index=0,
-)
+pg = st.navigation([home, wallet, log, loot_tracker, loot])
 
-amount = st.number_input("Enter amount:", min_value=0, value=0, step=1, format="%d")
 
-col1, col2 = st.columns(2)
+if session:
+    user = session.user
+    with st.sidebar:
+        st.write(f"Welcome, {user.email}!")
+        if st.button("Log Out", use_container_width=True):
+            conn.client.auth.sign_out()
+            st.rerun()
+    pg.run()
 
-with col1:
-    if st.button("Add", use_container_width=True):
-        if amount > 0:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            st.session_state.transactions.append(
-                {
-                    "action": "Add",
-                    "amount": amount,
-                    "zone": zone,
-                    "timestamp": timestamp,
-                    "key": f"add_{timestamp}_{len(st.session_state.transactions)}",
-                }
-            )
-            wallet_utils.save_to_storage()
-            st.toast(f"Added ${amount:,}", icon="✅")
-        else:
-            st.error("Amount must be greater than 0.")
-
-with col2:
-    if st.button("Subtract", use_container_width=True):
-        if amount > 0:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            st.session_state.transactions.append(
-                {
-                    "action": "Subtract",
-                    "amount": amount,
-                    "zone": zone,
-                    "timestamp": timestamp,
-                    "key": f"sub_{timestamp}_{len(st.session_state.transactions)}",
-                }
-            )
-            wallet_utils.save_to_storage()
-            st.toast(f"Subtracted ${amount:,}", icon="⚠️")
-        else:
-            st.error("Amount must be greater than 0.")
-
-st.divider()
-
-# 4. UI: Transaction Log (Recent 5)
-st.subheader("Recent Transactions")
-
-if st.session_state.get("transactions"):
-    # Sort transactions by timestamp (newest first) and take top 5
-    sorted_transactions = sorted(
-        st.session_state.transactions, key=lambda x: x["timestamp"], reverse=True
-    )
-    recent_transactions = sorted_transactions[:5]
-
-    for transaction in recent_transactions:
-        col_log, col_delete = st.columns([5, 1])
-        with col_log:
-            zone_info = (
-                f" | {transaction.get('zone', 'N/A')}" if "zone" in transaction else ""
-            )
-            st.write(
-                f"**{transaction['action']}** ${transaction['amount']:,}{zone_info}  \n_{transaction['timestamp']}_"
-            )
-        with col_delete:
-            if st.button("Delete", key=f"del_home_{transaction['key']}"):
-                wallet_utils.delete_transaction(transaction["key"])
-
-    if len(st.session_state.transactions) > 5:
-        st.info(f"Showing 5 of {len(st.session_state.transactions)} transactions.")
-        if st.button("View All Transactions"):
-            st.switch_page("pages/log.py")
 else:
-    st.info("No transactions recorded yet.")
-
-# 5. Final Update
-metric_placeholder.metric("Current Total", f"${wallet_utils.calculate_total():,}")
+    with st.sidebar:
+        response = conn.client.auth.sign_in_with_oauth(
+            {
+                "provider": "discord",
+                "options": {"redirect_to": "http://localhost:8501"},
+            }
+        )
+        st.link_button(
+            "Login with Discord",
+            response.url if response.url else "",
+            use_container_width=True,
+        )
