@@ -1,0 +1,153 @@
+from datetime import datetime
+
+import streamlit as st
+
+import wallet_utils
+
+
+def temp_add_and_reset():
+    current_amount = st.session_state.amount_input
+    if current_amount > 0:
+        st.session_state.temp_transactions.append({"amount": current_amount})
+        st.toast(f"Added ${current_amount:,} to temp transactions", icon="✅")
+    st.session_state.amount_input = 0
+
+
+def temp_subtract_and_reset():
+    current_amount = st.session_state.amount_input
+    if current_amount > 0:
+        st.session_state.temp_transactions.append({"amount": -current_amount})
+        st.toast(f"Subtracted ${current_amount:,} from temp transactions", icon="✅")
+    st.session_state.amount_input = 0
+
+
+st.set_page_config(page_title="Wallet Tracker", page_icon="💰")
+
+# Custom CSS to change the cursor to a pointer for the selectbox
+st.markdown(
+    """
+    <style>
+    div[data-baseweb="select"], div[data-baseweb="select"] * {
+        cursor: pointer !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.title("ABI Extraction Wallet")
+
+# 1. Sync from Local Storage on Load
+wallet_utils.sync_from_storage()
+
+if "temp_transactions" not in st.session_state:
+    st.session_state.temp_transactions = []
+
+# 2. UI: Metric Placeholder
+metric_placeholder = st.empty()
+
+if st.session_state.temp_transactions:
+    data = {"Amounts": []}
+    for transaction in st.session_state.temp_transactions:
+        data["Amounts"].append(transaction["amount"])
+    st.table(data)
+
+# 3. UI: Inputs
+zone = st.selectbox(
+    "Zone:",
+    options=["TV Station", "Airport", "Armory", "Farm", "Valley", "Northridge"],
+    index=0,
+)
+
+amount = st.number_input(
+    "Enter amount:", min_value=0, value=0, step=1, format="%d", key="amount_input"
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("Add", use_container_width=True):
+        if amount > 0:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state.transactions.append(
+                {
+                    "action": "Add",
+                    "amount": amount,
+                    "zone": zone,
+                    "timestamp": timestamp,
+                    "key": f"add_{timestamp}_{len(st.session_state.transactions)}",
+                }
+            )
+            wallet_utils.save_to_storage()
+            st.toast(f"Added ${amount:,}", icon="✅")
+        else:
+            st.error("Amount must be greater than 0.")
+
+with col2:
+    if st.button("Subtract", use_container_width=True):
+        if amount > 0:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state.transactions.append(
+                {
+                    "action": "Subtract",
+                    "amount": amount,
+                    "zone": zone,
+                    "timestamp": timestamp,
+                    "key": f"sub_{timestamp}_{len(st.session_state.transactions)}",
+                }
+            )
+            wallet_utils.save_to_storage()
+            st.toast(f"Subtracted ${amount:,}", icon="⚠️")
+        else:
+            st.error("Amount must be greater than 0.")
+
+col3, col4 = st.columns(2)
+
+with col3:
+    st.button("Temp Add", use_container_width=True, on_click=temp_add_and_reset)
+
+with col4:
+    st.button(
+        "Temp Subtract", use_container_width=True, on_click=temp_subtract_and_reset
+    )
+
+if st.button("Submit Transaction", use_container_width=True):
+    pass
+
+st.divider()
+
+# 4. UI: Transaction Log (Recent 5)
+st.subheader("Recent Transactions")
+
+if st.session_state.get("transactions"):
+    # Sort transactions by timestamp (newest first) and take top 5
+    sorted_transactions = sorted(
+        st.session_state.transactions, key=lambda x: x["timestamp"], reverse=True
+    )
+    recent_transactions = sorted_transactions[:5]
+
+    for transaction in recent_transactions:
+        with st.container(border=True):
+            col_log, col_delete = st.columns([5, 1])
+            with col_log:
+                zone_info = (
+                    f" | {transaction.get('zone', 'N/A')}"
+                    if "zone" in transaction
+                    else ""
+                )
+                st.write(
+                    f"**{transaction['action']}** ${transaction['amount']:,}{zone_info}  \n_{transaction['timestamp']}_"
+                )
+            with col_delete:
+                if st.button("Delete", key=f"del_home_{transaction['key']}"):
+                    wallet_utils.delete_transaction(transaction["key"])
+
+    if len(st.session_state.transactions) > 5:
+        st.info(f"Showing 5 of {len(st.session_state.transactions)} transactions.")
+        if st.button("View All Transactions"):
+            st.switch_page("pages/log.py")
+else:
+    st.info("No transactions recorded yet.")
+
+# 5. Final Update
+metric_placeholder.metric("Current Total", f"${wallet_utils.calculate_total():,}")
