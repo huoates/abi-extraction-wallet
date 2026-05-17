@@ -23,6 +23,7 @@ class Item(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: int
     name: str
+    thumbnail_url: str | None
 
 
 class Opening(BaseModel):
