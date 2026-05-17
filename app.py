@@ -11,7 +11,9 @@ conn = st.connection(
 if "code" in st.query_params:
     auth_code = st.query_params["code"]
     try:
-        conn.client.auth.exchange_code_for_session({"auth_code": auth_code})  # type: ignore
+        conn.client.auth.exchange_code_for_session(
+            {"auth_code": auth_code}
+        )  # type: ignore
         st.query_params.clear()
         st.rerun()
     except Exception as e:
