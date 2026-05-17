@@ -2,13 +2,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Streamlit",
+            "name": "Python: Streamlit app.py",
             "type": "debugpy",
             "request": "launch",
             "module": "streamlit",
             "args": [
                 "run",
                 "app.py",
+                "--server.port",
+                "8501"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Streamlit ai_add_loot",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "streamlit",
+            "args": [
+                "run",
+                "pages/ai_add_loot.py",
                 "--server.port",
                 "8501"
             ],
