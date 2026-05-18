@@ -90,11 +90,12 @@ def get_container_by_name(name):
         return None
 
 
-def create_opening(difficulty_id, zone_id, container_id):
+def create_opening(ai_add_loot_id, difficulty_id, zone_id, container_id):
     response = (
         supabase.table("opening")
         .insert(
             {
+                "ai_add_loot_id": ai_add_loot_id,
                 "difficulty_id": difficulty_id,
                 "zone_id": zone_id,
                 "container_id": container_id,

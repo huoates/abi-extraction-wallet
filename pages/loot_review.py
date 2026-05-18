@@ -282,6 +282,7 @@ if all_items_resolved:
 
         # Then, create a new opening record in the database with all relevant fields
         opening = db.create_opening(
+            ai_add_loot.id,
             ai_add_loot.ai_add_loot_session.difficulty.id,
             ai_add_loot.ai_add_loot_session.zone.id,
             container.id,
