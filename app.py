@@ -29,7 +29,7 @@ home = st.Page("pages/home.py", title="Home", icon="🏠")
 wallet = st.Page("pages/wallet.py", title="Wallet", icon="💼")
 log = st.Page("pages/log.py", title="Wallet Transactions", icon="📜")
 loot_tracker = st.Page("pages/loot_tracker.py", title="Loot Tracker", icon="📜")
-loot = st.Page("pages/loot.py", title="Loot")
+loot_charts = st.Page("pages/loot_charts.py", title="Loot Charts", icon="📊")
 add_item_image = st.Page("pages/add_item_image.py", title="Add Item Image", icon="🖼️")
 ai_add_loot = st.Page("pages/ai_add_loot.py", title="AI Add Loot", icon="🖼️")
 loot_review = st.Page("pages/loot_review.py", title="Loot Review", icon="🔍")
@@ -40,7 +40,7 @@ pg = st.navigation(
         wallet,
         log,
         loot_tracker,
-        loot,
+        loot_charts,
         add_item_image,
         ai_add_loot,
         loot_review,
