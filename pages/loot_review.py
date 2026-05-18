@@ -8,6 +8,17 @@ from models import GenaiItemDetails
 
 st.set_page_config(page_title="Loot Review")
 st.title("Loot Review")
+pending_review_count = db.get_ai_add_loot_count_by_status("PENDING")
+approved_review_count = db.get_ai_add_loot_count_by_status("APPROVED")
+denied_review_count = db.get_ai_add_loot_count_by_status("DENIED")
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Pending Reviews", pending_review_count)
+with col2:
+    st.metric("Approved Reviews", approved_review_count)
+with col3:
+    st.metric("Denied Reviews", denied_review_count)
 
 # Select the next single record from the ai_add_loot table where status is
 # PENDING and display the image on the page

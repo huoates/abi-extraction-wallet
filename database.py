@@ -140,3 +140,16 @@ def update_ai_add_loot_review_status(ai_add_loot_id, new_status):
         .execute()
     )
     return response
+
+
+def get_ai_add_loot_count_by_status(status):
+    response = (
+        supabase.table("ai_add_loot")
+        .select("id", count="exact")
+        .eq("review_status", status)
+        .execute()
+    )
+    if response.data:
+        return response.count
+    else:
+        return 0
